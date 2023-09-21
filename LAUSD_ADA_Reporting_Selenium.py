@@ -617,5 +617,5 @@ all_attendance_summary_reports = pd.concat(all_attendance_summary_reports).reset
 all_ada_adm_reports = pd.concat(all_ada_adm_reports).reset_index(drop =  True)
 all_ada_adm_reports.to_excel(os.getcwd() + f'\\all_reports\\all_ada_adm_reports_{current_month}.xlsx', index = False, encoding='utf-8')
 all_attendance_summary_reports.to_excel(os.getcwd() + f'\\all_reports\\all_attendance_summary_reports_{current_month}.xlsx', index = False, encoding='utf-8')
-
+#close chrome window
 driver.quit()
