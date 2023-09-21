@@ -10,13 +10,17 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException,
 import os
 import time
 import logging
-import re
 import numpy as np
 from config import ps_pass
 from bs4 import BeautifulSoup
+import datetime
 
 start_date = '08/14/2023'
 end_date = '09/08/2023'
+
+today = datetime.date.today()
+current_month = today.month
+
 
 logging.basicConfig(filename='LAUSD_Reporting.log', level=logging.INFO,
                    format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S',force=True)
@@ -41,33 +45,33 @@ url = 'https://ps.greendot.org/admin/pw.html'
 username = 'samuel.taylor'
 password = ps_pass
 
+school_list = {'Animo Leadership CHS ' : 'HS' ,
+            'Animo Inglewood CHS ': 'HS',
+            'Oscar De la Hoya Animo CHS ': 'HS',
+            'Animo South L.A. CHS ': 'HS',
+            'Animo Venice CHS ': 'HS',
+            'Animo Pat Brown CHS ': 'HS',
+            'Animo Ralph Bunche CHS ': 'HS',
+            'Animo Jackie Robinson CHS ': 'HS',
+            'Animo Watts College Preparatory Academy ': 'HS',
+            'Alain Leroy Locke College Preparatory Academy ': 'HS',
+            'Animo James B Taylor Middle School ': 'MS',
+            'Animo Jefferson Charter Middle School ': 'MS',
+            'Animo Legacy Charter Middle School ': 'MS',
+            'Animo Ellen Ochoa Middle School ': 'MS',
+            'Animo Mae Jemison Middle School ': 'MS',
+            'Animo Florence-Firestone CMS ': 'MS',
+            'Animo City of Champions Charter High School ': 'HS',
+            'Animo Compton Charter School ': 'SPAN'
+            }
 
-
-school_list = ['Animo Leadership CHS ' ,
-            'Animo Inglewood CHS ',
-            'Oscar De la Hoya Animo CHS ',
-            'Animo South L.A. CHS ',
-            'Animo Venice CHS ',
-            'Animo Pat Brown CHS ',
-            'Animo Ralph Bunche CHS ',
-            'Animo Jackie Robinson CHS ',
-            'Animo Watts College Preparatory Academy ',
-            'Alain Leroy Locke College Preparatory Academy ',
-            'Animo James B Taylor Middle School ',
-            'Animo Jefferson Charter Middle School ',
-            'Animo Legacy Charter Middle School ',
-            'Animo Ellen Ochoa Middle School ',
-            'Animo Mae Jemison Middle School ',
-            'Animo Florence-Firestone CMS ',
-            'Animo City of Champions Charter High School ',
-            'Animo Compton Charter School ']
-
-
-driver.get(url)
+school_list = pd.DataFrame(list(school_list.items()), columns=['School Name', 'Category'])
 
 # ----------------------------------------------------
 
 def login_func():
+
+    driver.get(url)
 
     username_field = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.ID, 'fieldUsername'))
@@ -95,7 +99,7 @@ def login_func():
 
 def school_choice(what_school):
     
-    print(what_school)
+    logging.info(f'Selected school - {what_school}')
 
     school_dropdown = WebDriverWait(driver, 30).until(
                         EC.element_to_be_clickable((By.XPATH, '//*[@id="school_picker_adminSchoolPicker_toggle_btn"]/pds-icon'))
@@ -214,55 +218,10 @@ def run_attendance_summary_grade_reports():
     except:
         logging.info('Unable to submit attendance summary by grade')
 
-    # -----------------------------------------------------------------
-
-#HS this runs once
-#MS it will run three times 6, 6-8,  & 7-8
-#Unless it is Compton then it will run once for all grade levels, 
-# once for grade 6, once for grades 7-8 and once for grades 9-12.
-
-    
-def get_ada_adm_by_date():
-
-    system_reports_button = WebDriverWait(driver, 30).until(
-                                EC.element_to_be_clickable((By.XPATH, "//a[@title='Run system reports']"))
-                            )
-
-    system_reports_button.click()
-
-    ada_adm_date_button = WebDriverWait(driver, 30).until(
-                                EC.element_to_be_clickable((By.LINK_TEXT, "ADA/ADM by Date"))
-                            )
-
-    ada_adm_date_button.click()
-
-
-    user_defined_start_date_input = WebDriverWait(driver, 30).until(
-                            EC.element_to_be_clickable((By.NAME, "param_startdate"))
-                        )
-    user_defined_start_date_input.clear()
-    user_defined_start_date_input.send_keys(start_date)
-
-    user_defined_end_date_input = WebDriverWait(driver, 30).until(
-                            EC.element_to_be_clickable((By.NAME, "param_enddate"))
-                        )
-    user_defined_end_date_input.clear()
-    user_defined_end_date_input.send_keys(end_date)
-
-    submit_button = WebDriverWait(driver, 30).until(
-                    EC.element_to_be_clickable((By.ID, 'btnSubmit'))
-                )
-    try:
-        submit_button.click()
-        logging.info('ADA by ADM by date has been submitted')
-    except:
-        logging.info('ADA by ADM by date has NOT been submitted')
-
-# --------------------------------------------------------------------
-
-def parse_ada_adm_report():
-
-    #this just needs more time
+# --------------------------------------------------------------------------
+def parse_ada_adm_report(checkbox_values): 
+    #checkbox values is only an argument for logging purposes 
+    #this is declared before get_ada_adm_by_date because it must be used from within the function
 
     open_ada_adm_report = WebDriverWait(driver, 30).until(
                                     EC.element_to_be_clickable((By.XPATH, '//*[@id="reportq"]/table/tbody/tr[1]/td[6]/a'))
@@ -287,36 +246,40 @@ def parse_ada_adm_report():
     # Step 4: Use BeautifulSoup to parse the page source and extract the data
     soup = BeautifulSoup(page_source, 'html.parser')
 
-    header = soup.find('td', align='right').text
+    try:
+        header = soup.find('td', align='right').text
+        logging.info(f'Parsing through the ADA ADM Report for {checkbox_values}')
 
-    #parse the ada_adm_report into a pandas frame
-    table = soup.find('div', {'align': 'center'}).find('table')
+                #parse the ada_adm_report into a pandas frame
+        table = soup.find('div', {'align': 'center'}).find('table')
 
-    # Extract table rows (data)
-    data = []
-    for row in table.find_all('tr'):
-        row_data = [cell.text.strip() for cell in row.find_all('td')]
-        if row_data:
-            data.append(row_data)
+        # Extract table rows (data)
+        data = []
+        for row in table.find_all('tr'):
+            row_data = [cell.text.strip() for cell in row.find_all('td')]
+            if row_data:
+                data.append(row_data)
 
-    df = pd.DataFrame(data[1: -3], columns = data[0])
+        df = pd.DataFrame(data[1: -3], columns = data[0])
 
-    totals = pd.DataFrame(data[-2:])
+        totals = pd.DataFrame(data[-2:])
 
+        totals.insert(0, 'NaN_1', np.nan)
+        totals.insert(0, 'NaN_2', np.nan)
+        totals.iloc[0, 0] = header + ' Ran for Grade ' + str(checkbox_values)
+        
 
-    totals.insert(0, 'NaN_1', np.nan)
-    totals.insert(0, 'NaN_2', np.nan)
-    totals.iloc[0, 0] = header
+        new_names = dict(zip(list(totals.columns), list(df.columns)))
+        totals = totals.rename(columns = new_names)
 
-    new_names = dict(zip(list(totals.columns), list(df.columns)))
-    totals = totals.rename(columns = new_names)
+        df = pd.concat([df, totals], ignore_index=True)
 
-    df = pd.concat([df, totals], ignore_index=True)
+        all_ada_adm_reports.append(df)
 
-    all_ada_adm_reports.append(df)
+    except:
+        logging.info(f'Report generate as a blank, moving on for {checkbox_values}')
 
-# ------------------------------------------------
-
+# ------------------------------------------------------------
 def download_attendance_summary_report():
 
     # Get the list of window handles
@@ -342,7 +305,6 @@ def download_attendance_summary_report():
     for file_name in files_in_directory:
         if 'AttendanceSummaryByGrade' in file_name:
             os.remove(file_name)
-            print(f"File '{file_name}' containing the substring 'AttendanceSummaryByGrade' deleted.")
             logging.info(f"File '{file_name}' containing the substring 'AttendanceSummaryByGrade' deleted.")
         else:
             pass
@@ -350,7 +312,7 @@ def download_attendance_summary_report():
     # -----------------------
     #recursively try to download the AttendanceSummaryByGrade in order to parse
 
-    max_attempts = 4
+    max_attempts = 5
     attempts = 0
 
     while attempts < max_attempts:
@@ -362,14 +324,13 @@ def download_attendance_summary_report():
 
             if "Running" in running_or_complete.text or "Pending" in running_or_complete.text:
                 
-
-                print("Attendance summary by grade still loading. Refreshing web page")
+                logging.info("Attendance summary by grade still loading. Refreshing web page")
                 time.sleep(10)
                 driver.refresh()
                 attempts += 1
-                print('Attempt recorded')
+                logging.info('Report still running')
             else:
-                print("Running or Pending is not in the tag. Downloaded the report")
+                logging.info("Running or Pending is not in the tag. Downloaded the report AttendanceSummaryByGrade")
 
                 download_button = WebDriverWait(driver, 30).until(
                         EC.element_to_be_clickable((By.XPATH, '//*[@id="queuecontent"]/table/tbody/tr[2]/td[7]/a/div'))
@@ -381,7 +342,7 @@ def download_attendance_summary_report():
 
         #the running or complete element will not even be present if report is ready
         except NoSuchElementException:
-            print("Running or complete not available moving past")
+            logging.info("Running or complete not available for AttendanceSummaryByGrade moving past")
             
             download_button = WebDriverWait(driver, 30).until(
                         EC.element_to_be_clickable((By.XPATH, '//*[@id="queuecontent"]/table/tbody/tr[2]/td[7]/a/div'))
@@ -392,7 +353,8 @@ def download_attendance_summary_report():
             except:
                 logging.info('Unable to download Attendance Summary Report - Report Failed')
 
-# -------------------------------------------------------------
+
+# -----------------------------------------------------------
 
 def scrape_attendance_summary_report():
 
@@ -408,7 +370,11 @@ def scrape_attendance_summary_report():
 
 
     #parse the ada_adm_report into a pandas frame
-    table = soup.find('div', {'align': 'center'}).find('table')
+    try:
+        table = soup.find('div', {'align': 'center'}).find('table')
+        logging.info('Scraping data for Attendance Summary by Grade')
+    except:
+        logging.info('Nothing to scrape for Attendancy Summary by Grade')
 
     # Extract table rows (data)
     data = []
@@ -438,39 +404,218 @@ def scrape_attendance_summary_report():
     df = pd.concat([df, temp], ignore_index=True)
 
     all_attendance_summary_reports.append(df)
+
+# ----------------------------------------------------------------------
+
+def ms_ada_adm_process(what_school):
+
+    if what_school == 'Animo Compton Charter School ':  #Compton needs to run four seperate times
+
+        checkbox_values_1 = 6,7,8,9,10,11,12
+        checkbox_values_2 = 6
+        checkbox_values_3 = 7,8
+        checkbox_values_4 = 9,10,11,12
+
+        # Combine the lists into one list of lists
+        all_checkbox_values = [checkbox_values_1, checkbox_values_2, checkbox_values_3, checkbox_values_4]
+
+    else:
+        checkbox_values_1 = 6, 7, 8
+        checkbox_values_2 = 7, 8
+        checkbox_values_3 = 6
+
+        # Combine the lists into one list of lists
+        all_checkbox_values = [checkbox_values_1, checkbox_values_2, checkbox_values_3]
+
     
-# ----------------------------Calling all functions into one pipeline------------------------ 
+    # Create a DataFrame
+    grade_boxes = pd.DataFrame({'Checkbox_Values': all_checkbox_values})
 
-all_attendance_summary_reports = []
+
+    for index, row in grade_boxes.iterrows():
+        checkbox_values = row["Checkbox_Values"]
+        
+        #this processs should see if there are multiple values in the cell, then click on all of them, else only one
+        if isinstance(checkbox_values, tuple):
+            for value in checkbox_values:
+
+                grade_button = WebDriverWait(driver, 30).until(
+                            EC.element_to_be_clickable((By.XPATH, f'//input[@type="checkbox" and @value="{value}"]'))
+                        )
+
+                grade_button.click()
+
+                #I think the process will have to go all the way through right here, otherwise it will overwrite itself 
+                #Unless that outer for loop gets the job done
+
+
+        elif isinstance(checkbox_values, int):
+                
+            grade_button = WebDriverWait(driver, 30).until(
+                            EC.element_to_be_clickable((By.XPATH, f'//input[@type="checkbox" and @value="{checkbox_values}"]'))
+                        )
+
+            grade_button.click()
+
+        else:
+            logging.info('Instance with d type in checkbox values frame')
+
+        #Dates need to be input with every iteration - therefore done before every submission
+        
+        user_defined_start_date_input = WebDriverWait(driver, 30).until(
+                                EC.element_to_be_clickable((By.NAME, "param_startdate"))
+                            )
+        user_defined_start_date_input.clear()
+        user_defined_start_date_input.send_keys(start_date)
+
+        user_defined_end_date_input = WebDriverWait(driver, 30).until(
+                                EC.element_to_be_clickable((By.NAME, "param_enddate"))
+                            )
+        user_defined_end_date_input.clear()
+        user_defined_end_date_input.send_keys(end_date)
+
+
+        submit_button = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable((By.ID, 'btnSubmit'))
+                        )
+
+        try:
+            submit_button.click()
+            logging.info(f'ADA by ADM by date has been submitted for {what_school}')
+        except:
+            logging.info(f'ADA by ADM by date has NOT been submitted for {what_school}')
+
+        try:
+            parse_ada_adm_report(checkbox_values)
+            logging.info(f'ADA by ADM report has been parsed for {what_school} grade - {checkbox_values}')
+        except:
+            logging.info(f'ADA by ADM report has NOT been parsed for {what_school} grade - {checkbox_values}')
+
+        # Close the current window
+        driver.close()
+
+        # Switch back to the original window
+        driver.switch_to.window(driver.window_handles[0])
+
+        driver.back()
+        driver.refresh()
+    
+        #gp back a page and refresh the page to make sure the boxes are clear
+
+    #Move up one page in order to get back to the report queue to the Attendance Summary by Grade Report can be scraped
+    driver.forward()
+
+# -------------------------------------------------------------------
+
+def get_ada_adm_by_date(what_school, MS_HS_SPAN):
+
+    logging.info(f'Here is the MS_HS_SPAN variable -  {MS_HS_SPAN}')
+
+        
+    system_reports_button = WebDriverWait(driver, 30).until(
+                                EC.element_to_be_clickable((By.XPATH, "//a[@title='Run system reports']"))
+                            )
+
+    system_reports_button.click()
+
+    ada_adm_date_button = WebDriverWait(driver, 30).until(
+                                EC.element_to_be_clickable((By.LINK_TEXT, "ADA/ADM by Date"))
+                            )
+
+    ada_adm_date_button.click()
+
+
+    user_defined_start_date_input = WebDriverWait(driver, 30).until(
+                            EC.element_to_be_clickable((By.NAME, "param_startdate"))
+                        )
+    user_defined_start_date_input.clear()
+    user_defined_start_date_input.send_keys(start_date)
+
+    user_defined_end_date_input = WebDriverWait(driver, 30).until(
+                            EC.element_to_be_clickable((By.NAME, "param_enddate"))
+                        )
+    user_defined_end_date_input.clear()
+    user_defined_end_date_input.send_keys(end_date)
+
+    if MS_HS_SPAN == 'HS':
+
+        #If HS it is good to be clicked straight away because no boxes are selected. 
+
+        submit_button = WebDriverWait(driver, 30).until(
+                    EC.element_to_be_clickable((By.ID, 'btnSubmit'))
+                )
+        
+        try:
+            submit_button.click()
+            logging.info(f'ADA by ADM by date has been submitted for {what_school}')
+        except:
+            logging.info(f'ADA by ADM by date has NOT been submitted for {what_school}')
+
+        parse_ada_adm_report(('9', '10', '11', '12'))
+
+        # Close the current window
+        driver.close()
+
+        # Switch back to the original window
+        driver.switch_to.window(driver.window_handles[0])
+
+
+    # ----------------------------------------------------This is where the process must be ran 3 times for MS--------
+
+    elif MS_HS_SPAN == 'MS':
+        
+        # the parse_ada_adm_report prcoess is built directly into this function
+        ms_ada_adm_process(what_school)
+
+    elif MS_HS_SPAN == 'SPAN':
+
+       ms_ada_adm_process(what_school)
+
+    else:
+        logging.info('Wrong variable for MS_HS_SPAN')
+        
+#  ------------FINAL PROCESS CALL------------------------------------------
+
 all_ada_adm_reports = []
+all_attendance_summary_reports = []
 
-def process(what_school, iteration):
+def process(what_school, iteration, HS_MS_span):
     #If it is the first time login, otherwise go back to the homepage and change the selection 
+
     if iteration == 0:
         login_func()
     else:
         pass
+
     school_choice(what_school)
     submit_attendance_refresh()
     run_attendance_summary_grade_reports()
-    get_ada_adm_by_date()
-    parse_ada_adm_report()
+    get_ada_adm_by_date(what_school, HS_MS_span)
     download_attendance_summary_report()
     scrape_attendance_summary_report()
 
-    #once process has gone through once. Go back to the top
+    #once process has gone through once. Go back to the top and restart
     ps_homepage = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.XPATH, '//*[@id="branding-powerschool"]/img'))
                 )
     try:
         ps_homepage.click()
-        logging.info('Back to the homepage to restart')
+        logging.info('Back to the homepage to restart\n\n')
     except:
         logging.info('Unable to get back to the homepage')
-    
-#Calling the first 3 schools from the school list
-for index, value in enumerate(school_list[:3]):
-    process(value, index)
 
-all_attendance_summary_reports = pd.concat(all_attendance_summary_reports)
-all_ada_adm_reports = pd.concat(all_ada_adm_reports)
+
+#In order to run for select schools go school_list[:]
+for index, value in school_list.iterrows():
+    iteration =  index
+    what_school = value['School Name']
+    HS_MS_span = value['Category']
+
+    process(what_school, iteration, HS_MS_span)
+
+all_attendance_summary_reports = pd.concat(all_attendance_summary_reports).reset_index(drop = True)
+all_ada_adm_reports = pd.concat(all_ada_adm_reports).reset_index(drop =  True)
+all_ada_adm_reports.to_excel(os.getcwd() + f'\\all_reports\\all_ada_adm_reports_{current_month}.xlsx', index = False, encoding='utf-8')
+all_attendance_summary_reports.to_excel(os.getcwd() + f'\\all_reports\\all_attendance_summary_reports_{current_month}.xlsx', index = False, encoding='utf-8')
+
+driver.quit()
