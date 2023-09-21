@@ -3,6 +3,7 @@
 # LAUSD Attendance Reporting Automation
 
 This Python script automates attendance reporting for a list of schools within the Los Angeles Unified School District (LAUSD). It leverages web scraping and Selenium to interact with the LAUSD attendance reporting platform and retrieve relevant data.
+The final product will output reports to the all_reports folder in the naming convention of 'all_ada_adm_reports_{month_number}', and 'all_attendance_summary_reports_{month_number}'
 
 ## Table of Contents
 
