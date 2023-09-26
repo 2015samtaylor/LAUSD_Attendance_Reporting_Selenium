@@ -1,4 +1,3 @@
-```markdown
 # LAUSD Attendance Reporting Automation
 
 This Python script automates attendance reporting for LAUSD schools using Selenium and BeautifulSoup. It performs the following tasks:
@@ -71,4 +70,4 @@ This Python script automates attendance reporting for LAUSD schools using Seleni
 
 
 For any questions or issues, please contact Sam Taylor.
-```
+
