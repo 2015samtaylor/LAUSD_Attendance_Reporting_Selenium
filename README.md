@@ -1,71 +1,74 @@
----
-
+```markdown
 # LAUSD Attendance Reporting Automation
 
-This Python script automates attendance reporting for a list of schools within the Los Angeles Unified School District (LAUSD). It leverages web scraping and Selenium to interact with the LAUSD attendance reporting platform and retrieve relevant data.
+This Python script automates attendance reporting for LAUSD schools using Selenium and BeautifulSoup. It performs the following tasks:
 
-The reason for this script is to download ADA ADM by Student reports, and Attendance Summary Reports for all schools. 
-
-The final product will output reports to the all_reports folder in the naming convention of 'all_ada_adm_reports_{month_number}', and 'all_attendance_summary_reports_{month_number}'
-
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
+1. Logs into the CA PowerSchool platform.
+2. Selects a school from a predefined list.
+3. Refreshes attendance data within a specified date range.
+4. Runs attendance summary reports by grade, and parses it.
+5. Downloads and parses ADA/ADM reports.
+6. Saves the reports to Excel files.
 
 ## Prerequisites
 
-Before running this script, ensure you have the following prerequisites:
-
-- [Python](https://www.python.org/downloads/) installed on your machine.
-- [Google Chrome](https://www.google.com/chrome/) web browser installed.
-- ChromeDriver executable in the project directory. You can download it from [here](https://sites.google.com/chromium.org/driver/).
-- Required Python libraries and packages installed. You can install them using `pip` by running `pip install -r requirements.txt`.
+- Python 3.x
+- pipenv (for virtual environment management)
 
 ## Installation
 
-1. Clone the repository to your local machine:
+1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/your-repo.git
-   cd your-repo
+   git clone https://github.com/yourusername/lausd-attendance-reporting.git
    ```
 
-2. Place the ChromeDriver executable in the project directory.
-
-3. Install the required Python packages:
+2. Navigate to the project directory:
 
    ```bash
-   pip install -r requirements.txt
+   cd lausd-attendance-reporting
+   ```
+
+3. Create a virtual environment and install dependencies:
+
+   ```bash
+   pipenv shell
+   pipenv install
    ```
 
 ## Usage
 
-To use this script, follow these steps:
-
-1. Open a terminal and navigate to the project directory.
-
-2. Run the script:
+1. Start the Jupyter Notebook server within the virtual environment:
 
    ```bash
-   python LAUSD_ADA_Reporting_Selenium.py
+   jupyter notebook
+
    ```
 
-3. The script will automate various tasks related to attendance reporting for the specified schools.
+2. Open the `LAUSD_Attendance_Reporting.ipynb` notebook.
 
-## Configuration
+3. In the first cell of the notebook, you will be prompted to enter your CA PowerSchool Username and Password. This is also the section to change the start_date, end_date and reporting month. All of these variables are necessary for accuracy:
 
-You need to configure the script by providing your login credentials and specifying the list of schools you want to process.
+   ```python
+   import getpass
 
-- Open the `config.py` file and replace the placeholders with your username and password:
+   # Prompt the user for a password
+   username = (str(input('Enter your CA PowerSchool Username: ')))
+   password = getpass.getpass("Enter your CA PowerSchool Password: ")
+   
+   start_date = '08/14/2023'
+   end_date = '09/08/2023'
+   month_num = '1'
+   ```
 
-  ```python
-  username = 'your_username'
-  ps_pass = 'your_password'
-  ```
+   Enter your credentials when prompted.
 
-- Update the `school_list` variable in `LAUSD_ADA_Reporting_Selenium.py` with the names of the schools you want to process.
+4. Run the remaining cells in the notebook to automate the attendance reporting process.
 
----
+5. The script will log in, select the school, refresh attendance data, run reports, and save them to Excel files.
+
+6. When you're finished, shut down the Jupyter Notebook server.
+
+
+For any questions or issues, please contact Sam Taylor.
+```
